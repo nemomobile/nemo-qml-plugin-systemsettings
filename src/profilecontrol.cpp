@@ -66,6 +66,7 @@ int ProfileControl::s_instanceCounter = 0;
 
 ProfileControl::ProfileControl(QObject *parent)
     : QObject(parent),
+      m_profile(GeneralProfile),
       m_systemSoundLevel(-1),
       m_touchscreenToneLevel(-1),
       m_touchscreenVibrationLevel(-1),
@@ -75,7 +76,8 @@ ProfileControl::ProfileControl(QObject *parent)
       m_mailToneEnabled(-1),
       m_internetCallToneEnabled(-1),
       m_calendarToneEnabled(-1),
-      m_clockAlarmToneEnabled(-1)
+      m_clockAlarmToneEnabled(-1),
+      m_editMode(ProfileControl::EditDefaultProfile)
 {
     profile_track_add_profile_cb((profile_track_profile_fn_data) currentProfileChangedCallback, this, NULL);
 
@@ -90,7 +92,7 @@ ProfileControl::ProfileControl(QObject *parent)
     }
     s_instanceCounter++;
 
-    m_ringerVolume = profile_get_value_as_int(GeneralProfile, VolumeKey);
+    m_ringerVolume = profile_get_value_as_int(m_profile.toUtf8().constData(), VolumeKey);
     m_vibraInGeneral = profile_get_value_as_bool(GeneralProfile, VibraKey);
     m_vibraInSilent = profile_get_value_as_bool(SilentProfile, VibraKey);
 }
@@ -120,7 +122,11 @@ void ProfileControl::setProfile(const QString &profile)
 {
     if (profile != m_profile) {
         m_profile = profile;
-        profile_set_profile(profile.toUtf8().constData());
+        if (m_editMode == ProfileControl::EditDefaultProfile) {
+            profile_set_profile(profile.toUtf8().constData());
+        } else {
+            emit profileChanged(m_profile);
+        }
     }
 }
 
@@ -136,7 +142,7 @@ void ProfileControl::setRingerVolume(int volume)
     }
 
     m_ringerVolume = volume;
-    profile_set_value_as_int(GeneralProfile, VolumeKey, volume);
+    profile_set_value_as_int(m_profile.toUtf8().constData(), VolumeKey, volume);
     emit ringerVolumeChanged();
 }
 
@@ -184,7 +190,7 @@ void ProfileControl::setVibraMode(int mode)
     bool changed = false;
     if (generalValue != m_vibraInGeneral) {
         m_vibraInGeneral = generalValue;
-        profile_set_value_as_bool(GeneralProfile, VibraKey, m_vibraInGeneral);
+        profile_set_value_as_bool(m_profile.toUtf8().constData(), VibraKey, m_vibraInGeneral);
         changed = true;
     }
     if (silentValue != m_vibraInSilent) {
@@ -201,7 +207,7 @@ void ProfileControl::setVibraMode(int mode)
 int ProfileControl::systemSoundLevel()
 {
     if (m_systemSoundLevel == -1) {
-        m_systemSoundLevel = profile_get_value_as_int(GeneralProfile, SystemSoundLevelKey);
+        m_systemSoundLevel = profile_get_value_as_int(m_profile.toUtf8().constData(), SystemSoundLevelKey);
     }
     return m_systemSoundLevel;
 }
@@ -212,14 +218,14 @@ void ProfileControl::setSystemSoundLevel(int level)
         return;
     }
     m_systemSoundLevel = level;
-    profile_set_value_as_int(GeneralProfile, SystemSoundLevelKey, level);
+    profile_set_value_as_int(m_profile.toUtf8().constData(), SystemSoundLevelKey, level);
     emit systemSoundLevelChanged();
 }
 
 int ProfileControl::touchscreenToneLevel()
 {
     if (m_touchscreenToneLevel == -1) {
-        m_touchscreenToneLevel = profile_get_value_as_int(GeneralProfile, TouchscreenToneLevelKey);
+        m_touchscreenToneLevel = profile_get_value_as_int(m_profile.toUtf8().constData(), TouchscreenToneLevelKey);
     }
     return m_touchscreenToneLevel;
 }
@@ -230,14 +236,14 @@ void ProfileControl::setTouchscreenToneLevel(int level)
         return;
     }
     m_touchscreenToneLevel = level;
-    profile_set_value_as_int(GeneralProfile, TouchscreenToneLevelKey, level);
+    profile_set_value_as_int(m_profile.toUtf8().constData(), TouchscreenToneLevelKey, level);
     emit touchscreenToneLevelChanged();
 }
 
 int ProfileControl::touchscreenVibrationLevel()
 {
     if (m_touchscreenVibrationLevel == -1) {
-        m_touchscreenVibrationLevel = profile_get_value_as_int(GeneralProfile, TouchscreenVibrationLevelKey);
+        m_touchscreenVibrationLevel = profile_get_value_as_int(m_profile.toUtf8().constData(), TouchscreenVibrationLevelKey);
     }
     return m_touchscreenVibrationLevel;
 }
@@ -248,14 +254,14 @@ void ProfileControl::setTouchscreenVibrationLevel(int level)
         return;
     }
     m_touchscreenVibrationLevel = level;
-    profile_set_value_as_int(GeneralProfile, TouchscreenVibrationLevelKey, level);
+    profile_set_value_as_int(m_profile.toUtf8().constData(), TouchscreenVibrationLevelKey, level);
     emit touchscreenVibrationLevelChanged();
 }
 
 QString ProfileControl::ringerToneFile()
 {
     if (m_ringerToneFile.isNull()) {
-        m_ringerToneFile = QString::fromUtf8(profile_get_value(GeneralProfile, RingerToneKey));
+        m_ringerToneFile = QString::fromUtf8(profile_get_value(m_profile.toUtf8().constData(), RingerToneKey));
     }
 
     return m_ringerToneFile;
@@ -268,14 +274,14 @@ void ProfileControl::setRingerToneFile(const QString &filename)
     }
 
     m_ringerToneFile = filename;
-    profile_set_value(GeneralProfile, RingerToneKey, filename.toUtf8().constData());
+    profile_set_value(m_profile.toUtf8().constData(), RingerToneKey, filename.toUtf8().constData());
     emit ringerToneFileChanged();
 }
 
 QString ProfileControl::messageToneFile()
 {
     if (m_messageToneFile.isNull()) {
-        m_messageToneFile = QString::fromUtf8(profile_get_value(GeneralProfile, MessageToneKey));
+        m_messageToneFile = QString::fromUtf8(profile_get_value(m_profile.toUtf8().constData(), MessageToneKey));
     }
 
     return m_messageToneFile;
@@ -288,14 +294,14 @@ void ProfileControl::setMessageToneFile(const QString &filename)
     }
 
     m_messageToneFile = filename;
-    profile_set_value(GeneralProfile, MessageToneKey, filename.toUtf8().constData());
+    profile_set_value(m_profile.toUtf8().constData(), MessageToneKey, filename.toUtf8().constData());
     emit messageToneFileChanged();
 }
 
 QString ProfileControl::chatToneFile()
 {
     if (m_chatToneFile.isNull()) {
-        m_chatToneFile = QString::fromUtf8(profile_get_value(GeneralProfile, ChatToneKey));
+        m_chatToneFile = QString::fromUtf8(profile_get_value(m_profile.toUtf8().constData(), ChatToneKey));
     }
 
     return m_chatToneFile;
@@ -308,14 +314,14 @@ void ProfileControl::setChatToneFile(const QString &filename)
     }
 
     m_chatToneFile = filename;
-    profile_set_value(GeneralProfile, ChatToneKey, filename.toUtf8().constData());
+    profile_set_value(m_profile.toUtf8().constData(), ChatToneKey, filename.toUtf8().constData());
     emit chatToneFileChanged();
 }
 
 QString ProfileControl::mailToneFile()
 {
     if (m_mailToneFile.isNull()) {
-        m_mailToneFile = QString::fromUtf8(profile_get_value(GeneralProfile, MailToneKey));
+        m_mailToneFile = QString::fromUtf8(profile_get_value(m_profile.toUtf8().constData(), MailToneKey));
     }
 
     return m_mailToneFile;
@@ -328,14 +334,14 @@ void ProfileControl::setMailToneFile(const QString &filename)
     }
 
     m_mailToneFile = filename;
-    profile_set_value(GeneralProfile, MailToneKey, filename.toUtf8().constData());
+    profile_set_value(m_profile.toUtf8().constData(), MailToneKey, filename.toUtf8().constData());
     emit mailToneFileChanged();
 }
 
 QString ProfileControl::calendarToneFile()
 {
     if (m_calendarToneFile.isNull()) {
-        m_calendarToneFile = QString::fromUtf8(profile_get_value(GeneralProfile, CalendarToneKey));
+        m_calendarToneFile = QString::fromUtf8(profile_get_value(m_profile.toUtf8().constData(), CalendarToneKey));
     }
 
     return m_calendarToneFile;
@@ -348,14 +354,14 @@ void ProfileControl::setCalendarToneFile(const QString &filename)
     }
 
     m_calendarToneFile = filename;
-    profile_set_value(GeneralProfile, CalendarToneKey, filename.toUtf8().constData());
+    profile_set_value(m_profile.toUtf8().constData(), CalendarToneKey, filename.toUtf8().constData());
     emit calendarToneFileChanged();
 }
 
 QString ProfileControl::internetCallToneFile()
 {
     if (m_internetCallToneFile.isNull()) {
-        m_internetCallToneFile = QString::fromUtf8(profile_get_value(GeneralProfile, InternetCallToneKey));
+        m_internetCallToneFile = QString::fromUtf8(profile_get_value(m_profile.toUtf8().constData(), InternetCallToneKey));
     }
 
     return m_internetCallToneFile;
@@ -368,14 +374,14 @@ void ProfileControl::setInternetCallToneFile(const QString &filename)
     }
 
     m_internetCallToneFile = filename;
-    profile_set_value(GeneralProfile, InternetCallToneKey, filename.toUtf8().constData());
+    profile_set_value(m_profile.toUtf8().constData(), InternetCallToneKey, filename.toUtf8().constData());
     emit internetCallToneFileChanged();
 }
 
 QString ProfileControl::clockAlarmToneFile()
 {
     if (m_clockAlarmToneFile.isNull()) {
-        m_clockAlarmToneFile = QString::fromUtf8(profile_get_value(GeneralProfile, ClockAlarmToneKey));
+        m_clockAlarmToneFile = QString::fromUtf8(profile_get_value(m_profile.toUtf8().constData(), ClockAlarmToneKey));
     }
 
     return m_clockAlarmToneFile;
@@ -388,7 +394,7 @@ void ProfileControl::setClockAlarmToneFile(const QString &filename)
     }
 
     m_clockAlarmToneFile = filename;
-    profile_set_value(GeneralProfile, ClockAlarmToneKey, filename.toUtf8().constData());
+    profile_set_value(m_profile.toUtf8().constData(), ClockAlarmToneKey, filename.toUtf8().constData());
     emit clockAlarmToneFileChanged();
 }
 
@@ -396,7 +402,7 @@ void ProfileControl::setClockAlarmToneFile(const QString &filename)
 bool ProfileControl::ringerToneEnabled()
 {
     if (m_ringerToneEnabled == -1) {
-        m_ringerToneEnabled = profile_get_value_as_bool(GeneralProfile, RingerToneEnabledKey);
+        m_ringerToneEnabled = profile_get_value_as_bool(m_profile.toUtf8().constData(), RingerToneEnabledKey);
     }
     return m_ringerToneEnabled;
 }
@@ -407,14 +413,14 @@ void ProfileControl::setRingerToneEnabled(bool enabled)
         return;
     }
     m_ringerToneEnabled = enabled;
-    profile_set_value_as_bool(GeneralProfile, RingerToneEnabledKey, enabled);
+    profile_set_value_as_bool(m_profile.toUtf8().constData(), RingerToneEnabledKey, enabled);
     emit ringerToneEnabledChanged();
 }
 
 bool ProfileControl::messageToneEnabled()
 {
     if (m_messageToneEnabled == -1) {
-        m_messageToneEnabled = profile_get_value_as_bool(GeneralProfile, MessageToneEnabledKey);
+        m_messageToneEnabled = profile_get_value_as_bool(m_profile.toUtf8().constData(), MessageToneEnabledKey);
     }
     return m_messageToneEnabled;
 }
@@ -425,14 +431,14 @@ void ProfileControl::setMessageToneEnabled(bool enabled)
         return;
     }
     m_messageToneEnabled = enabled;
-    profile_set_value_as_bool(GeneralProfile, MessageToneEnabledKey, enabled);
+    profile_set_value_as_bool(m_profile.toUtf8().constData(), MessageToneEnabledKey, enabled);
     emit messageToneEnabledChanged();
 }
 
 bool ProfileControl::chatToneEnabled()
 {
     if (m_chatToneEnabled == -1) {
-        m_chatToneEnabled = profile_get_value_as_bool(GeneralProfile, ChatToneEnabledKey);
+        m_chatToneEnabled = profile_get_value_as_bool(m_profile.toUtf8().constData(), ChatToneEnabledKey);
     }
     return m_chatToneEnabled;
 }
@@ -443,14 +449,14 @@ void ProfileControl::setChatToneEnabled(bool enabled)
         return;
     }
     m_chatToneEnabled = enabled;
-    profile_set_value_as_bool(GeneralProfile, ChatToneEnabledKey, enabled);
+    profile_set_value_as_bool(m_profile.toUtf8().constData(), ChatToneEnabledKey, enabled);
     emit chatToneEnabledChanged();
 }
 
 bool ProfileControl::mailToneEnabled()
 {
     if (m_mailToneEnabled == -1) {
-        m_mailToneEnabled = profile_get_value_as_bool(GeneralProfile, MailToneEnabledKey);
+        m_mailToneEnabled = profile_get_value_as_bool(m_profile.toUtf8().constData(), MailToneEnabledKey);
     }
     return m_mailToneEnabled;
 }
@@ -461,14 +467,14 @@ void ProfileControl::setMailToneEnabled(bool enabled)
         return;
     }
     m_mailToneEnabled = enabled;
-    profile_set_value_as_bool(GeneralProfile, MailToneEnabledKey, enabled);
+    profile_set_value_as_bool(m_profile.toUtf8().constData(), MailToneEnabledKey, enabled);
     emit mailToneEnabledChanged();
 }
 
 bool ProfileControl::internetCallToneEnabled()
 {
     if (m_internetCallToneEnabled == -1) {
-        m_internetCallToneEnabled = profile_get_value_as_bool(GeneralProfile, InternetCallToneEnabledKey);
+        m_internetCallToneEnabled = profile_get_value_as_bool(m_profile.toUtf8().constData(), InternetCallToneEnabledKey);
     }
     return m_internetCallToneEnabled;
 }
@@ -479,14 +485,14 @@ void ProfileControl::setInternetCallToneEnabled(bool enabled)
         return;
     }
     m_internetCallToneEnabled = enabled;
-    profile_set_value_as_bool(GeneralProfile, InternetCallToneEnabledKey, enabled);
+    profile_set_value_as_bool(m_profile.toUtf8().constData(), InternetCallToneEnabledKey, enabled);
     emit internetCallToneEnabledChanged();
 }
 
 bool ProfileControl::calendarToneEnabled()
 {
     if (m_calendarToneEnabled == -1) {
-        m_calendarToneEnabled = profile_get_value_as_bool(GeneralProfile, CalendarToneEnabledKey);
+        m_calendarToneEnabled = profile_get_value_as_bool(m_profile.toUtf8().constData(), CalendarToneEnabledKey);
     }
     return m_calendarToneEnabled;
 }
@@ -497,14 +503,14 @@ void ProfileControl::setCalendarToneEnabled(bool enabled)
         return;
     }
     m_calendarToneEnabled = enabled;
-    profile_set_value_as_bool(GeneralProfile, CalendarToneEnabledKey, enabled);
+    profile_set_value_as_bool(m_profile.toUtf8().constData(), CalendarToneEnabledKey, enabled);
     emit calendarToneEnabledChanged();
 }
 
 bool ProfileControl::clockAlarmToneEnabled()
 {
     if (m_clockAlarmToneEnabled == -1) {
-        m_clockAlarmToneEnabled = profile_get_value_as_bool(GeneralProfile, ClockAlarmToneEnabledKey);
+        m_clockAlarmToneEnabled = profile_get_value_as_bool(m_profile.toUtf8().constData(), ClockAlarmToneEnabledKey);
     }
     return m_clockAlarmToneEnabled;
 }
@@ -515,10 +521,22 @@ void ProfileControl::setClockAlarmToneEnabled(bool enabled)
         return;
     }
     m_clockAlarmToneEnabled = enabled;
-    profile_set_value_as_bool(GeneralProfile, ClockAlarmToneEnabledKey, enabled);
+    profile_set_value_as_bool(m_profile.toUtf8().constData(), ClockAlarmToneEnabledKey, enabled);
     emit clockAlarmToneEnabledChanged();
 }
 
+ProfileControl::EditMode ProfileControl::editMode() const
+{
+    return m_editMode;
+}
+
+void ProfileControl::setEditMode(ProfileControl::EditMode mode)
+{
+    if (m_editMode != mode) {
+        m_editMode = mode;
+        emit editModeChanged();
+    }
+}
 
 void ProfileControl::currentProfileChangedCallback(const char *name, ProfileControl *profileControl)
 {
@@ -531,7 +549,7 @@ void ProfileControl::updateStateCallBack(const char *profile, const char *key, c
 {
     Q_UNUSED(type)
 
-    if (qstrcmp(profile, GeneralProfile) == 0) {
+    if (qstrcmp(profile, m_profile.toUtf8().constData()) == 0) {
         if (qstrcmp(key, VolumeKey) == 0) {
             int newVolume = QString(val).toInt();
             if (newVolume != m_ringerVolume) {

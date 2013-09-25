@@ -40,6 +40,8 @@ class ProfileControl: public QObject
 {
     Q_OBJECT
     Q_ENUMS(VibraMode)
+    Q_ENUMS(EditMode)
+
     Q_PROPERTY(QString profile READ profile WRITE setProfile NOTIFY profileChanged)
     Q_PROPERTY(int ringerVolume READ ringerVolume WRITE setRingerVolume NOTIFY ringerVolumeChanged())
     Q_PROPERTY(int vibraMode READ vibraMode WRITE setVibraMode NOTIFY vibraModeChanged())
@@ -63,12 +65,18 @@ class ProfileControl: public QObject
     Q_PROPERTY(bool calendarToneEnabled READ calendarToneEnabled WRITE setCalendarToneEnabled NOTIFY calendarToneEnabledChanged)
     Q_PROPERTY(bool clockAlarmToneEnabled READ clockAlarmToneEnabled WRITE setClockAlarmToneEnabled NOTIFY clockAlarmToneEnabledChanged)
 
+    Q_PROPERTY(EditMode editMode READ editMode WRITE setEditMode NOTIFY editModeChanged)
 public:
     enum VibraMode {
         VibraAlways,
         VibraSilent,
         VibraNormal,
         VibraNever
+    };
+
+    enum EditMode {
+        EditDefaultProfile,
+        EditInactiveProfile
     };
 
     /*!
@@ -159,6 +167,22 @@ public:
     bool clockAlarmToneEnabled();
     void setClockAlarmToneEnabled(bool enabled);
 
+    /*!
+     * Returns current edit mode.
+     *
+     * \return Current edit mode
+     */
+    EditMode editMode() const;
+
+    /*!
+     * Sets EditMode for this object. If using EditMode::EditInactiveProfile, it's possible
+     * to edit a profile properties, without making it active. If using EditMode::EditDefaultProfile,
+     * then ProfileControl::setProfile("profileName") activates the profile and all editing
+     * operations changes the active profile.
+     *
+     * \param mode EditMode::EditDefaultProfile or EditMode::EditInactiveProfile
+     */
+    void setEditMode(EditMode mode);
 
 signals:
     /*!
@@ -191,9 +215,11 @@ signals:
     void calendarToneEnabledChanged();
     void clockAlarmToneEnabledChanged();
 
+    void editModeChanged();
+
 private:
     static int s_instanceCounter;
-
+    
     QString m_profile;
     int m_ringerVolume;
     bool m_vibraInGeneral;
@@ -216,6 +242,8 @@ private:
     int m_internetCallToneEnabled;
     int m_calendarToneEnabled;
     int m_clockAlarmToneEnabled;
+
+    EditMode m_editMode;
 
     //! libprofile callback for profile changes
     static void currentProfileChangedCallback(const char *profile, ProfileControl *profileControl);
