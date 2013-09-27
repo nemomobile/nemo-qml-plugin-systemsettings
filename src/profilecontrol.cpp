@@ -534,6 +534,10 @@ void ProfileControl::setEditMode(ProfileControl::EditMode mode)
 {
     if (m_editMode != mode) {
         m_editMode = mode;
+        if (m_editMode == ProfileControl::EditDefaultProfile) {
+            m_profile = GeneralProfile;
+            profile_set_profile(m_profile.toUtf8().constData());
+        }
         emit editModeChanged();
     }
 }
