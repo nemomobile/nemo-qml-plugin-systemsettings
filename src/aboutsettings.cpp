@@ -32,6 +32,7 @@
 #include "aboutsettings.h"
 
 #include <QDebug>
+#include <QDir>
 #include <QStringList>
 #include <QStorageInfo>
 #include <QNetworkInfo>
@@ -64,7 +65,15 @@ qlonglong AboutSettings::availableDiskSpace() const
 
 QString AboutSettings::bluetoothAddress() const
 {
-    return m_netinfo->macAddress(QNetworkInfo::BluetoothMode, 0);
+    QRegExp addressPattern("(\\w{2}:){5}\\w{2}");
+    QDir bluezAdapterDir("/var/lib/bluetooth/");
+    QStringList dirs = bluezAdapterDir.entryList();
+    Q_FOREACH(const QString &dir, dirs) {
+        if (addressPattern.exactMatch(dir)) {
+            return dir;
+        }
+    }
+    return QString();
 }
 
 QString AboutSettings::wlanMacAddress() const
