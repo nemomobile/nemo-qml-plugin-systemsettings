@@ -41,6 +41,7 @@ class AlarmToneModel
 {
     Q_OBJECT
     Q_PROPERTY(int count READ rowCount CONSTANT)
+    Q_PROPERTY(QString tonesPath READ tonesPath WRITE setTonesPath NOTIFY tonesPathChanged)
 public:
     enum ApplicationRoles {
         FilenameRole = Qt::UserRole + 1,
@@ -53,17 +54,24 @@ public:
     virtual int rowCount(const QModelIndex &parent = QModelIndex()) const;
     virtual QVariant data(const QModelIndex &index, int role) const;
 
+    QString tonesPath() const;
+    void setTonesPath(const QString &path);
+
     Q_INVOKABLE QJSValue get(int index) const;
 
 signals:
     void selectedFileChanged();
     void currentIndexChanged();
+    void tonesPathChanged();
 
 protected:
     QHash<int, QByteArray> roleNames() const;
 
 private:
+    void initFileList();
+
     QFileInfoList m_fileInfoList;
+    QString m_tonesPath;
 };
 
 #endif
