@@ -39,14 +39,25 @@
 class DeviceLockInterface : public QObject
 {
     Q_OBJECT
+    Q_ENUMS(ReturnValue)
     Q_PROPERTY(bool isSet READ isSet NOTIFY isSetChanged)
 
 public:
     explicit DeviceLockInterface(QObject *parent = 0);
     virtual ~DeviceLockInterface();
 
-    Q_INVOKABLE bool checkCode(const QString &code);
-    Q_INVOKABLE bool setCode(const QString &oldCode, const QString &newCode);
+
+    /*!< note: encryption binary returns 0==OK and 1==Failed, switching is done in runPlugin for the QML */
+    enum ReturnValue
+    {
+        Failed = 0, /*!< Failed - syscall returned with default error */
+        OK,         /*!< OK - syscall returned without errors */
+        Expired,    /*!< Expired - lockcode creation date is over the settings limit */
+        InHistory   /*!< InHistory - lockcode was found in history file. */
+    };
+
+    Q_INVOKABLE int checkCode(const QString &code);
+    Q_INVOKABLE int setCode(const QString &oldCode, const QString &newCode);
     Q_INVOKABLE bool clearCode(const QString &currentCode);
     Q_INVOKABLE bool isSet();
     Q_INVOKABLE void refresh();

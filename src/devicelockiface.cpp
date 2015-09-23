@@ -35,26 +35,28 @@
 #include <QDebug>
 #include "devicelockiface.h"
 
-static bool runPlugin(QStringList args)
+static int runPlugin(QStringList args)
 {
     QSettings s("/usr/share/lipstick/devicelock/devicelock.conf", QSettings::IniFormat);
     QString pluginName = s.value("DeviceLock/pluginName").toString();
 
     if (pluginName.isEmpty()) {
         qWarning("DeviceLock: no plugin configuration set in /usr/share/lipstick/devicelock/devicelock.conf");
-        return false;
+        return DeviceLockInterface::Failed;
     }
 
     QProcess p;
     p.start(pluginName, args);
     if (!p.waitForFinished()) {
         qWarning("DeviceLock: plugin did not finish in time");
-        return false;
+        return DeviceLockInterface::Failed;
     }
 
     qDebug() << p.readAllStandardOutput();
     qWarning() << p.readAllStandardError();
-    return p.exitCode() == 0;
+    if (p.exitCode() == 0) return DeviceLockInterface::OK;
+    else if (p.exitCode() == 1) return DeviceLockInterface::Failed;
+    else return p.exitCode(); // special cases like Expired and InHistory
 }
 
 DeviceLockInterface::DeviceLockInterface(QObject *parent)
@@ -67,12 +69,12 @@ DeviceLockInterface::~DeviceLockInterface()
 {
 }
 
-bool DeviceLockInterface::checkCode(const QString &code)
+int DeviceLockInterface::checkCode(const QString &code)
 {
     return runPlugin(QStringList() << "--check-code" << code);
 }
 
-bool DeviceLockInterface::setCode(const QString &oldCode, const QString &newCode)
+int DeviceLockInterface::setCode(const QString &oldCode, const QString &newCode)
 {
     bool return_value = runPlugin(QStringList() << "--set-code" << oldCode << newCode);
     if (return_value) {
